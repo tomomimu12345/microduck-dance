@@ -1,0 +1,25 @@
+microduck-dance
+Copyright 2026 tomomimu12345
+
+Software: Apache License 2.0 (LICENSE).
+
+This repository uses microduck-playground
+(https://github.com/Vottivott/microduck-playground) as the git submodule
+third_party/microduck-playground, pinned to commit f010ef1. Its NOTICE reads in part:
+
+  MicroDuck Playground
+  Copyright 2026 Hannes von Essen / Vottivott
+  Software: Apache License 2.0.
+  3D hardware design files: Creative Commons Attribution-NonCommercial-
+  ShareAlike 4.0 International (CC BY-NC-SA 4.0).
+
+Two files of this repository are derived from microduck-playground files at
+commit f010ef1 and were modified. Each file starts with a list of the changes.
+
+  src/microduck_dance/basketball_finetune.py  from src/mjlab_microduck/basketball_finetune.py
+  scripts/finetune_basketball.py              from scripts/finetune_basketball.py
+
+Generated dance motions (dance/data/motions/), the commands and the training
+library made from them (dance/data/commands/, dance/data/library.npz) are not
+covered by the Apache License. They are for non-commercial use only, see
+dance/data/CREDITS.md.

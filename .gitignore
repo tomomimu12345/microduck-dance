@@ -1,0 +1,45 @@
+# Tool and editor folders. The only dotfiles in git are .gitignore and .gitmodules.
+.superpowers/
+.claude/
+.vscode/
+.idea/
+.python-version
+
+# Python and uv
+__pycache__/
+*.py[oc]
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info
+
+# Runs, checkpoints and outputs (regenerated, or fetched by scripts/fetch_*.sh)
+logs/
+wandb/
+out/
+nohup.out
+*.pt
+*.onnx
+
+# Command files and other npz are generated. The training library and the
+# training command files are kept, the song command files are made from the songs.
+*.npz
+!dance/data/library.npz
+!dance/data/commands/training/*.npz
+dance/data/commands/songs/
+
+# Music is never in git (dance/data/CREDITS.md says where each song comes from).
+dance/data/music/
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.m4a
+
+# Local FlowerDance files, not part of the repository.
+dance/data/archive/
+
+# Documents (report, experiment log, figures) are not in git.
+docs/

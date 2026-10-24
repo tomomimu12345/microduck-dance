@@ -1,0 +1,3 @@
+[submodule "third_party/microduck-playground"]
+	path = third_party/microduck-playground
+	url = https://github.com/Vottivott/microduck-playground
