@@ -1,71 +1,72 @@
 # microduck-dance
 
-曲を1つ与えると、MuJoCo シミュレータの中で microduck（Pollen Robotics の小型二足ロボット）がその曲に合わせて踊る。Physical AI 応用1講座の最終課題である。
+English | [日本語](README.ja.md)
 
-This repository makes the Microduck robot dance to music in MuJoCo: dance generation with EDGE, retargeting to robot commands, and RL policies (flat floor, rough terrain, roller skates) trained with mjlab on top of [microduck-playground](https://github.com/Vottivott/microduck-playground).
+Give it a song, and microduck (a small bipedal robot by Pollen Robotics) dances to it in the MuJoCo simulator. The dance comes from EDGE, a retarget turns it into robot commands, and RL policies trained with mjlab on top of [microduck-playground](https://github.com/Vottivott/microduck-playground) follow them on a flat floor, on rough terrain and on roller skates. This is the final assignment of the Physical AI 応用1 course.
 
-- 動画: https://youtu.be/scfU_0LVZqI
-- 説明、仕組み、再現手順: [dance/README.md](dance/README.md)
-- 結果と経緯: 提出した説明資料（PDF）。レポートの原稿と実験記録（`dance/docs/`）は git に入れていない
-- 出典と権利: [dance/data/CREDITS.md](dance/data/CREDITS.md)
+[![Video](https://img.youtube.com/vi/scfU_0LVZqI/maxresdefault.jpg)](https://youtu.be/scfU_0LVZqI)
 
-## 構成
+- How it works and how to reproduce it: [dance/README.md](dance/README.md) (in Japanese)
+- Results and the path to them: the submitted report (PDF). The report source and the experiment log (`dance/docs/`) are not in git
+- Sources and rights: [dance/data/CREDITS.md](dance/data/CREDITS.md)
+
+## Layout
 
 ```
 microduck-dance/
-├── third_party/microduck-playground   上流のプロジェクト（git のサブモジュール、commit f010ef1、変更なし）
-├── src/microduck_dance/               自作のパッケージ（リターゲットなど）
-│   └── tasks/                         ダンスのタスクの cfg と登録
-├── scripts/                           追加学習と外部の policy の取得
-├── dance/                             パイプラインのスクリプト、データ、ドキュメント
-└── tests/                             このリポジトリのテスト（CPU）
+├── third_party/microduck-playground   upstream project (git submodule, commit f010ef1, unmodified)
+├── src/microduck_dance/               own package (retarget and more)
+│   └── tasks/                         cfgs and registration of the dance tasks
+├── scripts/                           extra training and fetching external policies
+├── dance/                             pipeline scripts, data and documentation
+└── tests/                             tests of this repository (CPU)
 ```
 
-上流のファイルは1つも変更していない。上流の環境、機体モデル、タスク基盤をサブモジュールから import し、ダンスのタスクを mjlab のタスク登録に足している。どれがどちらにあるかは [dance/README.md](dance/README.md) の「このリポジトリとサブモジュール」にある。
+No upstream file is modified. The environments, robot model and task framework are imported from the submodule, and the dance tasks are added to the mjlab task registry. The section 「このリポジトリとサブモジュール」 in [dance/README.md](dance/README.md) lists which part lives where.
 
-## 準備
+## Setup
 
 ```bash
 git clone --recurse-submodules https://github.com/tomomimu12345/microduck-dance
 cd microduck-dance
-uv sync                               # .venv を作る。サブモジュールの mjlab_microduck も入る
-sudo apt install ffmpeg fonts-ipaexfont # 動画の組み立てと、そのテストに要る
-bash scripts/fetch_pollen_policies.sh # roller.onnx と芸の policy（logs/tricks/ へ）
-bash scripts/fetch_basketball.sh      # ボール上の b11（logs/rsl_rl/basketball/ へ）
-uv run pytest                         # CPU のテスト
+uv sync                               # creates .venv, including mjlab_microduck from the submodule
+sudo apt install ffmpeg fonts-ipaexfont # needed to build the video and for its tests
+bash scripts/fetch_pollen_policies.sh # roller.onnx and the trick policies (into logs/tricks/)
+bash scripts/fetch_basketball.sh      # b11 on the ball (into logs/rsl_rl/basketball/)
+uv run pytest                         # CPU tests
 ```
 
-Python 3.12 と uv が要る。学習と評価には CUDA の GPU が要る。説明資料の PDF を作るときは、Windows の Arial と BIZ UDGothic を使う（`/mnt/c/Windows/Fonts` にないときは `FONTDIR` で場所を指定する）。曲ファイルは git に入っていないので、[dance/data/CREDITS.md](dance/data/CREDITS.md) の出典から入手する。
+Python 3.12 and uv are required. Training and evaluation need a CUDA GPU. Building the report PDF uses Arial and BIZ UDGothic from Windows (set `FONTDIR` if they are not in `/mnt/c/Windows/Fonts`). The song files are not in git. Get them from the sources listed in [dance/data/CREDITS.md](dance/data/CREDITS.md).
 
-## タスク
+## Tasks
 
-`pyproject.toml` が `microduck_dance.tasks` を mjlab の entry point `mjlab.tasks` に登録しているので、mjlab のコマンドがそのままダンスのタスクを見つける。
+`pyproject.toml` registers `microduck_dance.tasks` under the mjlab entry point `mjlab.tasks`, so the mjlab commands find the dance tasks directly.
 
 ```bash
 uv run list-envs | grep -i dance
-uv run train Mjlab-DanceV3-Flat-MicroDuck --env.scene.num-envs 64 --agent.max-iterations 5   # 短い確認
+uv run train Mjlab-DanceV3-Flat-MicroDuck --env.scene.num-envs 64 --agent.max-iterations 5   # quick check
 uv run python dance/scripts/evaluate/play_dance.py --checkpoint <model.pt> \
     --commands dance/data/commands/songs/swag.npz --eval --seeds 0 --num-envs 16 --json out/swag.json
 ```
 
-| タスク | 内容 |
+| Task | Description |
 |---|---|
-| `Mjlab-Dance-Flat-MicroDuck`、`Mjlab-DanceLib-Flat-MicroDuck` | 最初の版のダンスのタスク |
-| `Mjlab-DanceV3-Flat-MicroDuck` | 平らな床のダンス（dance_v4 の学習に使った） |
-| `Mjlab-DanceV3-Rough-MicroDuck`、`Mjlab-DanceV3-RoughMix-MicroDuck` | 凸凹の地面と、平面と凸凹を混ぜた床（dance_rough） |
-| `Mjlab-BallDance-MicroDuck` | ボールの上で踊る |
-| `Mjlab-RollerDance-MicroDuck` | ローラースケートで踊る（roller_dance） |
+| `Mjlab-Dance-Flat-MicroDuck`, `Mjlab-DanceLib-Flat-MicroDuck` | first version of the dance task |
+| `Mjlab-DanceV3-Flat-MicroDuck` | dance on a flat floor (used to train dance_v4) |
+| `Mjlab-DanceV3-Rough-MicroDuck`, `Mjlab-DanceV3-RoughMix-MicroDuck` | rough terrain, and a floor mixing flat and rough parts (dance_rough) |
+| `Mjlab-BallDance-MicroDuck` | dance on a ball |
+| `Mjlab-RollerDance-MicroDuck` | dance on roller skates (roller_dance) |
 
-学習のログは `logs/rsl_rl/`、評価と録画の出力は `out/` に書かれる。どちらも git には入らない。学習と評価の手順の全体は [dance/README.md](dance/README.md) の「再現手順」にある。
+Training logs go to `logs/rsl_rl/`, and evaluation and recording outputs go to `out/`. Neither is in git. The full training and evaluation steps are in the section 「再現手順」 of [dance/README.md](dance/README.md).
 
-## ライセンス
+## License
 
-このリポジトリのコードは Apache License 2.0（[LICENSE](LICENSE)）である。`src/microduck_dance/basketball_finetune.py` と `scripts/finetune_basketball.py` は microduck-playground の同名のファイル（Apache-2.0）から派生したもので、各ファイルの冒頭に元のファイルと変更点を書いた（[NOTICE](NOTICE)）。
+The code in this repository is under the Apache License 2.0 ([LICENSE](LICENSE)). `src/microduck_dance/basketball_finetune.py` and `scripts/finetune_basketball.py` are derived from the files of the same name in microduck-playground (Apache-2.0). The head of each file names the original and the changes ([NOTICE](NOTICE)).
 
-次のものは Apache-2.0 の対象外で、それぞれの条件に従う。
+The following are not covered by Apache-2.0 and follow their own terms.
 
-- 生成したダンス（`dance/data/motions/` の pkl）と、そこから作ったコマンドと学習用ライブラリ（`dance/data/commands/`、`dance/data/library.npz`）。OpenAI Jukebox（OpenAI Noncommercial Use License）と AIST++ / AIST Dance Video Database の条件により、商用に使えない。
-- Microduck の3Dメッシュ（サブモジュールの中、Pollen Robotics、CC BY-NC-SA 4.0）。
-- サブモジュールの中身は microduck-playground のライセンス（ソフトウェアは Apache-2.0、ハードウェアの設計ファイルは CC BY-NC-SA 4.0）に従う。
+- The generated dances (pkl files in `dance/data/motions/`) and the commands and training library made from them (`dance/data/commands/`, `dance/data/library.npz`). They cannot be used commercially, because of the terms of OpenAI Jukebox (OpenAI Noncommercial Use License) and of AIST++ / the AIST Dance Video Database.
+- The Microduck 3D meshes (inside the submodule, Pollen Robotics, CC BY-NC-SA 4.0).
+- The contents of the submodule follow the microduck-playground license (Apache-2.0 for software, CC BY-NC-SA 4.0 for the hardware design files).
 
-曲ファイル、EDGE と Jukebox の重み、学習したチェックポイントはリポジトリに含めない。詳細は [dance/data/CREDITS.md](dance/data/CREDITS.md) にある。
+Song files, the EDGE and Jukebox weights and the trained checkpoints are not included. Details are in [dance/data/CREDITS.md](dance/data/CREDITS.md).
