@@ -1,6 +1,6 @@
 # dance/scripts
 
-パイプラインの段階ごとにフォルダを分けている。`dance/docs/`（レポートの原稿と図）は git に入れていないので、`terrain_figure.py` と `build_report_pdf.sh` はそのファイルが手元にあるときだけ使う。表は流れの順に並べた。「直下の scripts/」はリポジトリの直下の `scripts/` にあるもの。コマンドはすべてリポジトリのルートから実行する。
+パイプラインの段階ごとにフォルダを分けている。`dance/docs/`（レポートの原稿と図）は git に入れていないので、`terrain_figure.py`、`report_figures.py`、`build_report_pdf.sh` はそのファイルが手元にあるときだけ使う。表は流れの順に並べた。「直下の scripts/」はリポジトリの直下の `scripts/` にあるもの。コマンドはすべてリポジトリのルートから実行する。
 
 | フォルダ | スクリプト | 内容 | 入力 -> 出力 |
 |---|---|---|---|
@@ -40,8 +40,9 @@
 | video | `render_human.py` | 人の動きを2Dの棒人間で描く。`render_human_3d.py` が関節の親子関係と pkl の読み込みを使うので残している | pkl -> mp4 |
 | video | `pick_segment.py` | コマンドから最も動きのある区間を選ぶ | npz -> 開始時刻（json） |
 | video | `compose_video.py` | ffmpeg で人とロボットの動画を並べ、曲と題字を重ねる | mp4、wav -> mp4 |
-| video | `make_final_video.py` | 提出用の動画を組み立てる（3曲、比較、凸凹、ローラーの区間） | `out/rec_v4/*`、`out/eval_v4/*`、凸凹とローラーのクリップ -> 動画 |
-| video | `build_report_pdf.sh` | `dance/docs/report.md` から説明資料の PDF を作る | report.md -> `out/report/*.pdf` |
+| video | `make_final_video.py` | 提出用の動画を組み立てる（ハイライトとタイトル、しくみ（推論時と学習時）、3曲、凸凹、ローラー、クレジットの区間） | `out/rec_v4/*`、凸凹とローラーのクリップ -> 動画 |
+| video | `build_report_pdf.sh` | `dance/docs/report.md` から説明資料の PDF を作る（pandoc と lualatex、フォントは Windows の Arial と BIZ UDGothic。別の場所なら `FONTDIR` で指定） | report.md -> `out/report/*.pdf` |
+| video | `report_figures.py` | 説明資料の図（流れの図、評価の値の図など）を作る | `out/` の評価の json と npz -> `dance/docs/figures/*.png` |
 
 以前の実験では FlowerDance でダンスを生成した。FlowerDance にはライセンスが無いので、FlowerDance を呼ぶスクリプトと FlowerDance で作ったファイルはこの公開リポジトリに入れていない。`compute_beats.py` と `score_motion.py` は EDGE の venv（`setup/setup_edge.sh`）で動く。
 

@@ -251,28 +251,31 @@ def _sections_ctx(mfv, tmp_path):
     import copy
 
     sections = copy.deepcopy(mfv.SECTIONS)
-    ctx = mfv.Context(tmp_path / "rec", tmp_path / "eval", tmp_path / "slides", mfv.SONGS, "fallin_for_you",
-                      20.0, 25.0, "")
-    ctx.sections = sections
+    ctx = mfv.Context(tmp_path / "rec", tmp_path / "slides", mfv.SONGS, sections)
     return sections, ctx
+
+
+def test_final_video_sections_in_order():
+    mfv = _final_video_module()
+    assert [s.key for s in mfv.SECTIONS] == ["op", "highlight", "workflow", "songs", "rough", "roller", "credits",
+                                             "ed"]
 
 
 def test_final_video_skips_sections_with_missing_inputs(tmp_path, monkeypatch, capsys):
     """A fresh clone has no recordings and no course clips. Those sections are skipped with a warning
-    instead of stopping the build, and a skipped section adds no credit line."""
+    instead of stopping the build."""
     mfv = _final_video_module()
-    monkeypatch.setattr(mfv, "COURSE_DIR", tmp_path / "course")
     sections, ctx = _sections_ctx(mfv, tmp_path)
     for s in sections:
         if s.key in ("op", "ed"):
             s.requires = [tmp_path / "course" / f"{s.key}.mp4"]
+        if s.key in ("rough", "roller"):
+            s.requires = [tmp_path / "missing.mp4"]
     warnings = mfv.skip_missing(sections, ctx)
     on = {s.key for s in sections if s.enabled}
-    assert on == {"title", "intro", "pipeline", "credits"}
-    assert {w.split()[3] for w in warnings} == {"op", "songs", "compare", "rough", "roller", "ed"}
+    assert on == {"workflow", "credits"}
+    assert {w.split()[3] for w in warnings} == {"op", "highlight", "songs", "rough", "roller", "ed"}
     assert "WARNING: skipping section songs" in capsys.readouterr().err
-    extra = [line for s in sections if s.enabled for line in s.credits]
-    assert mfv.ROLLER_CREDIT not in extra
 
 
 def test_final_video_keeps_a_section_whose_inputs_exist(tmp_path, monkeypatch):
@@ -287,4 +290,82 @@ def test_final_video_keeps_a_section_whose_inputs_exist(tmp_path, monkeypatch):
             p.write_bytes(b"")
     mfv.skip_missing(sections, ctx)
     on = {s.key for s in sections if s.enabled}
-    assert "songs" in on and "compare" not in on
+    assert "songs" in on
+
+
+def _graph(seg):
+    cmd = build_ffmpeg_cmd(seg, Path("o.mp4"))
+    return cmd, cmd[cmd.index("-filter_complex") + 1]
+
+
+def test_song_segments_carry_the_title_two_labels_and_the_subtitle(tmp_path):
+    """The song layout has the song title at the top left, the two panel labels and two subtitle lines
+    at the bottom saying what each panel shows, nothing else (no band image)."""
+    mfv = _final_video_module()
+    ctx = mfv.Context(tmp_path, tmp_path, mfv.SONGS)
+    seg = mfv.song_segment(ctx, "funky_magic", 26.5)
+    assert seg.title == "Funky Magic / FLASH☆BEAT" and seg.band_png is None
+    assert (seg.left_label, seg.right_label) == (mfv.HUMAN_LABEL, mfv.ROBOT_LABEL)
+    assert seg.label_size >= 40 and seg.title_size >= 40
+    _, graph = _graph(seg)
+    assert seg.subtitle == mfv.SONG_SUB and len(seg.subtitle) == 2
+    assert graph.count("drawtext=") == 5
+    assert "x=40:y=36" in graph and f"fontsize={seg.label_size}" in graph
+    assert seg.body_y + 720 <= 1080 - len(seg.subtitle) * (seg.subtitle_size + 22) - 18
+
+
+def test_rough_roller_and_highlight_are_full_frame():
+    mfv = _final_video_module()
+    rough = mfv.b_rough(None)[0]
+    roller = mfv.b_roller(None)[0]
+    for seg, text, sub in ((rough, mfv.ROUGH_TEXT, mfv.ROUGH_SUB), (roller, mfv.ROLLER_TEXT, mfv.ROLLER_SUB)):
+        cmd, graph = _graph(seg)
+        assert seg.full_frame and seg.human_mp4 is None and seg.title == text and seg.subtitle == sub
+        assert graph.count("drawtext=") == 2 and "scale=1920:1080" in graph
+    # the roller clip starts at song time 28 s, so the robot clip is cut from 0 and the wav from 28
+    cmd, _ = _graph(roller)
+    assert cmd[cmd.index(str(roller.robot_mp4)) - 4] == "0.0"
+
+
+
+def test_highlight_carries_the_title_band_over_every_cut(tmp_path):
+    from PIL import Image
+
+    mfv = _final_video_module()
+    ctx = mfv.Context(Path("rec"), tmp_path, mfv.SONGS)
+    hl = mfv.b_highlight(ctx)
+    assert 8.0 <= sum(s.duration_s for s in hl) <= 10.0
+    band = tmp_path / "title_band.png"
+    im = Image.open(band)
+    assert im.size == (1920, compose_video_mod.BAND_H) and im.mode == "RGBA"
+    # transparent at the top of the band, so the robot above it is not covered
+    assert im.getpixel((960, 0))[3] == 0
+    for seg in hl:
+        _, graph = _graph(seg)
+        assert "drawtext" not in graph and seg.fade_in_s <= 0.1
+        assert seg.band_png == band and "overlay=" in graph
+
+
+def test_full_frame_segment_rejects_a_human_panel():
+    seg = Segment(robot_mp4=Path("r.mp4"), human_mp4=Path("h.mp4"), audio_wav=Path("a.wav"),
+                  title="x", start_s=0.0, duration_s=3.0, full_frame=True)
+    with pytest.raises(ValueError):
+        build_ffmpeg_cmd(seg, Path("o.mp4"))
+
+
+def test_workflow_slides_have_two_kinds_and_readable_text(tmp_path):
+    mfv = _final_video_module()
+    segs = mfv.b_workflow(mfv.Context(Path("rec"), tmp_path, mfv.SONGS))
+    assert [s.duration_s for s in segs] == [8.0, 6.0]
+    assert all(s.image.exists() for s in segs)
+    assert {k for _, _, k in mfv.INFER_STEPS} == {"own", "pre", "other"}
+    assert [k for l, _, k in mfv.INFER_STEPS if l.startswith(("EDGE", "policy", "リターゲット"))] == ["pre", "own", "own"]
+
+
+def test_credits_name_every_source_and_say_non_commercial_at_most_once():
+    mfv = _final_video_module()
+    text = "\n".join(t for t, _, _ in mfv.credit_lines(mfv.SONGS))
+    for need in ("OpenTracks", "Swag", "Phalene", "EDGE", "AIST++", "Jukebox", "CC BY-NC-SA 4.0",
+                 mfv.MESH_LICENSE_URL, "roller.onnx", "Apache-2.0", "mjlab", "microduck-playground"):
+        assert need in text, need
+    assert text.count("非営利") + text.count("収益化") <= 1

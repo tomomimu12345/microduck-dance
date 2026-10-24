@@ -18,7 +18,8 @@ Besides the song Segment there are two more segment kinds, used by make_final_vi
 - ClipSegment: a ready made clip (the course opening and ending) scaled to 1920x1080 with silent audio.
 All kinds give 1920x1080, 29.97 fps (the course clips' rate), AAC 48 kHz stereo, so the parts concatenate.
 Song and compare segments use the top 800 px (title, panels, footer) and may carry a 1920x280 band image
-(`band_png`) below them for credits and notes.
+(`band_png`) below them. The song Segment has layout fields (title position and size, label size, panel
+top), subtitle lines at the bottom, and a full_frame mode that scales a robot clip to the whole frame.
 """
 
 from __future__ import annotations
@@ -62,6 +63,22 @@ class Segment:
     # Song time at which robot_mp4 starts. A clip recorded from a song window (the roller clip starts
     # at song time 28 s) is cut from start_s - robot_offset_s, the human mp4 and the wav from start_s.
     robot_offset_s: float = 0.0
+    # Layout. The defaults are the original layout: title centred in the top 80 px, panels below it,
+    # labels inside the top of the panels. title_align "left" puts the title at the top left.
+    # body_y is the top of the panels, label_y the top of the labels (None: 14 px into the panels).
+    # full_frame scales the robot clip to the whole 1920x1080 frame (no human panel) and draws the
+    # title on a dark box over the video.
+    title_align: str = "center"
+    title_size: int = 44
+    label_size: int = 32
+    body_y: int = TITLE_H
+    label_y: int | None = None
+    full_frame: bool = False
+    fade_in_s: float = 0.3
+    fade_out_s: float = 0.5
+    # Subtitle lines drawn centred at the bottom of the frame (on a dark box), last line lowest.
+    subtitle: tuple = ()
+    subtitle_size: int = 40
 
 
 @dataclass
@@ -109,13 +126,29 @@ def _label(text: str, x_center: str, y: str, size: int = 32) -> str:
             f"box=1:boxcolor=black@0.55:boxborderw=10:x={x_center}-text_w/2:y={y}")
 
 
-def _afade(dur: float) -> str:
+def _subtitles(lines, size: int) -> str:
+    """drawtext filters for subtitle lines at the bottom, joined with commas ('' for none)."""
+    out = []
+    n = len(lines)
+    for i, text in enumerate(lines):
+        y = OUT_H - 40 - (n - i) * size - (n - i - 1) * 22
+        out.append(_label(text, "w/2", str(y), size))
+    return ",".join(out)
+
+
+def _afade(dur: float, fade_in: float = 0.3, fade_out: float = 0.5) -> str:
     """Resample to 48 kHz and fade the cut song in and out, so segment joins do not click."""
-    return f"aresample=48000,afade=t=in:d=0.3,afade=t=out:st={max(dur - 0.5, 0.0):.3f}:d=0.5"
+    return (f"aresample=48000,afade=t=in:d={fade_in}"
+            f",afade=t=out:st={max(dur - fade_out, 0.0):.3f}:d={fade_out}")
 
 
-def _title(text: str) -> str:
-    return (f"drawtext={_font_opt()}:text='{_escape_drawtext(text)}':fontcolor=white:fontsize=44:"
+def _title(text: str, align: str = "center", size: int = 44) -> str:
+    if not text:
+        return "null"
+    if align == "left":
+        return (f"drawtext={_font_opt()}:text='{_escape_drawtext(text)}':fontcolor=white:fontsize={size}:"
+                f"box=1:boxcolor=black@0.55:boxborderw=14:x=40:y=36")
+    return (f"drawtext={_font_opt()}:text='{_escape_drawtext(text)}':fontcolor=white:fontsize={size}:"
             f"x=(w-text_w)/2:y=({TITLE_H}-text_h)/2")
 
 
@@ -194,6 +227,17 @@ def _song_cmd(segment: Segment, out: Path) -> list[str]:
         if ss < 0:
             raise ValueError(f"segment {segment.title!r} starts before its robot clip (robot_offset_s)")
         cmd += ["-ss", str(ss), "-t", str(dur), "-i", str(p)]
+    if segment.full_frame:
+        if segment.human_mp4 is not None:
+            raise ValueError("a full_frame segment has no human panel")
+        chain = (f"[0:v]fps={FPS},scale={OUT_W}:{OUT_H}:force_original_aspect_ratio=decrease,"
+                 f"pad={OUT_W}:{OUT_H}:-1:-1,setsar=1,"
+                 f"{_title(segment.title, segment.title_align, segment.title_size)}"
+                 f"{',' + _subtitles(segment.subtitle, segment.subtitle_size) if segment.subtitle else ''}[v0]")
+        band = _band_stage(cmd, segment.band_png, dur, 2)
+        cmd += ["-filter_complex", f"{chain};{band}", "-map", "[v]", "-map", "1:a",
+                "-af", _afade(dur, segment.fade_in_s, segment.fade_out_s), *_enc(out), "-t", str(dur), str(out)]
+        return cmd
     robot = f"[0:v]fps={FPS},scale={ROBOT_W}:{BODY_H}:force_original_aspect_ratio=decrease,pad={ROBOT_W}:{BODY_H}:-1:-1[r]"
     if segment.human_mp4 is not None:
         human = f"[1:v]fps={FPS},scale={HUMAN_W}:{BODY_H}:force_original_aspect_ratio=decrease,pad={HUMAN_W}:{BODY_H}:-1:-1[h]"
@@ -204,18 +248,20 @@ def _song_cmd(segment: Segment, out: Path) -> list[str]:
         audio_idx, width = 1, ROBOT_W
     x0 = (OUT_W - width) // 2  # a robot-only panel is centred
     labels = ""
-    label_y = f"{TITLE_H + 14}"
+    label_y = str(segment.label_y if segment.label_y is not None else segment.body_y + 14)
+    size = segment.label_size
     if segment.left_label and segment.human_mp4 is not None:
-        labels += "," + _label(segment.left_label, str(HUMAN_W // 2), label_y)
+        labels += "," + _label(segment.left_label, str(HUMAN_W // 2), label_y, size)
     if segment.right_label:
         x = HUMAN_W + ROBOT_W // 2 if segment.human_mp4 is not None else x0 + ROBOT_W // 2
-        labels += "," + _label(segment.right_label, str(x), label_y)
-    chain = (f"{stack},pad={OUT_W}:{OUT_H}:{x0}:{TITLE_H}:color=black,{_title(segment.title)}"
-             f"{labels}[v0]")
+        labels += "," + _label(segment.right_label, str(x), label_y, size)
+    chain = (f"{stack},pad={OUT_W}:{OUT_H}:{x0}:{segment.body_y}:color=black,"
+             f"{_title(segment.title, segment.title_align, segment.title_size)}{labels}"
+             f"{',' + _subtitles(segment.subtitle, segment.subtitle_size) if segment.subtitle else ''}[v0]")
     band = _band_stage(cmd, segment.band_png, dur, audio_idx + 1)
     graph = ";".join(f for f in (robot, human, chain, band) if f)
     cmd += ["-filter_complex", graph, "-map", "[v]", "-map", f"{audio_idx}:a",
-            "-af", _afade(dur), *_enc(out), "-t", str(dur), str(out)]
+            "-af", _afade(dur, segment.fade_in_s, segment.fade_out_s), *_enc(out), "-t", str(dur), str(out)]
     return cmd
 
 

@@ -194,7 +194,10 @@ git clone --recurse-submodules https://github.com/tomomimu12345/microduck-dance
 cd microduck-dance
 # --recurse-submodules を付けずに clone したときは: git submodule update --init
 uv sync
+sudo apt install ffmpeg fonts-ipaexfont   # 動画の組み立てと、そのテスト（tests/test_dance_video.py）に要る
 ```
+
+説明資料の PDF（`build_report_pdf.sh`）は pandoc、lualatex（texlive-lang-japanese）と、Windows のフォント Arial と BIZ UDGothic を使う。フォントは既定で `/mnt/c/Windows/Fonts` から読む。ほかの場所にあるときは `FONTDIR=<場所>` を付けて実行する。
 
 `uv sync` はリポジトリの `.venv` に仮想環境を作る。別の場所に置くときは `UV_PROJECT_ENVIRONMENT=<場所>` を付けて `uv sync` と `uv run` を実行する。シェルスクリプト（`retarget_all.sh`、`rough_eval.sh`、`rough_record.sh`、`fall_eval.sh`、`sweep_vel_gain.sh`）は環境変数 `MICRODUCK_PY` の Python を使い、既定は `.venv/bin/python` である。EDGE の生成スクリプトは `EDGE_PY`（既定 `$HOME/.venvs/edge/bin/python`、手順3の `setup_edge.sh` が作る）を使う。
 
@@ -337,38 +340,36 @@ uv run scripts/finetune_roller_dance.py --resume <roller002の実行>/model_2999
 下の例は swag の場合である。3曲（swag、funky_magic、fallin_for_you）について同じことをする。`make_final_video.py` はファイル名で入力を探すので、名前はこのとおりにする。
 
 ```bash
-# 評価（学習時のランダム化あり、3シード x 16環境、60秒）。dance_v4 と base5000 の両方
+# 評価（学習時のランダム化あり、3シード x 16環境、60秒）。base5000 の評価は説明資料の比較にだけ使う
 uv run python dance/scripts/evaluate/play_dance.py --checkpoint <dance_v4のmodel_9996.pt> \
     --commands dance/data/commands/songs/swag.npz --eval --seeds 0 1 2 --num-envs 16 --json out/eval_v4/dance_v4_swag.json
 uv run python dance/scripts/evaluate/play_dance.py --checkpoint <base5000のmodel_4998.pt> \
     --commands dance/data/commands/songs/swag.npz --eval --seeds 0 1 2 --num-envs 16 --json out/eval_v4/base5000_swag.json
 
-# 録画（ランダム化なし、1環境、曲の頭から全部）。base5000 の録画は比較の曲（fallin_for_you）だけ要る
+# 録画（ランダム化なし、1環境、曲の頭から全部）。dance_v4 だけ。Funky Magic の録画はハイライトの区間にも使う
 MUJOCO_GL=egl uv run python dance/scripts/evaluate/play_dance.py --checkpoint <dance_v4のmodel_9996.pt> \
     --commands dance/data/commands/songs/swag.npz --cam-follow lagged --out out/rec_v4/swag_v4.mp4
-MUJOCO_GL=egl uv run python dance/scripts/evaluate/play_dance.py --checkpoint <base5000のmodel_4998.pt> \
-    --commands dance/data/commands/songs/fallin_for_you.npz --cam-follow lagged --out out/rec_v4/fallin_for_you_base5000.mp4
 
 # 人の動きの3D表示
 MUJOCO_GL=egl uv run python dance/scripts/video/render_human_3d.py --motion dance/data/motions/songs/swag.pkl \
     --out out/rec_v4/swag_human3d.mp4
 
-# 凸凹の区間のクリップ（dance_rough、Funky Magic の 0〜15 秒、最も難しい階段のタイル、最初の2秒は引きの画）
+# 凸凹の区間のクリップ（dance_rough、Funky Magic の 0〜15 秒、最も難しい階段のタイル、最初の2秒は引きの画）。ハイライトにも使う
 MUJOCO_GL=egl uv run python dance/scripts/evaluate/play_dance.py --checkpoint <dance_roughのmodel_10750.pt> \
     --commands dance/data/commands/songs/funky_magic.npz --terrain video --tile-type pyramid_stairs --spawn-u 0.125 \
     --cam-follow lagged --cam-distance 0.8 --cam-elevation -30 --cam-azimuth 135 --wide-intro-s 2 \
     --max-seconds 15 --out out/rough/t31/funky_magic_video_15s_wideintro_rough.mp4
 
-# ローラーの区間のクリップ（roller_dance、Funky Magic の 28〜43 秒）
+# ローラーの区間のクリップ（roller_dance、Funky Magic の 28〜43 秒）。ハイライトにも使う
 MUJOCO_GL=egl uv run python dance/scripts/evaluate/roller_dance_eval.py --checkpoint <roller_danceのmodel_3399.pt> \
     --commands dance/data/commands/songs/funky_magic.npz --start-seconds 28 --max-seconds 15 \
     --cam-distance 0.9 --cam-elevation -20 --out out/roller/video2/roller002_funky_magic_15s.mp4
 
-# 提出用の動画。既定の引数が提出した動画の設定（比較は Fallin For You の 20 秒から25秒）
+# 提出用の動画。既定の引数が提出した動画の設定
 MUJOCO_GL=egl uv run python dance/scripts/video/make_final_video.py --out out/final/microduck_dance.mp4
 ```
 
-講座のオープニングとエンディングの映像（`out/course_assets/op.mp4`、`ed.mp4`）は講座から配られた素材で、このリポジトリには入っていない。`make_final_video.py` は、入力のファイルが無い区間を警告を出して飛ばす。新しい clone でもオープニングとエンディングを除いた動画は組み立てられる。`--list-sections` で区間の一覧、`--table-only` で区間の表だけを出す。
+動画の区間は、講座のオープニング、ハイライトとタイトル（Funky Magic の平らな床、凸凹、ローラーの3つの短いカット）、しくみ（推論時と学習時の2枚のスライド）、3曲（左に人、右にロボット）、凸凹の床、ローラースケート、クレジット、講座のエンディングの順である。講座のオープニングとエンディングの映像（`out/course_assets/op.mp4`、`ed.mp4`）は講座から配られた素材で、このリポジトリには入っていない。`make_final_video.py` は、入力のファイルが無い区間を警告を出して飛ばす。新しい clone でもオープニングとエンディングを除いた動画は組み立てられる。`--list-sections` で区間の一覧、`--table-only` で区間の表だけを出す。
 
 テストは `uv run pytest` で走る（CPU、このリポジトリの `tests/`）。上流のテストはサブモジュールの中で `uv run pytest third_party/microduck-playground/tests` で走る。
 

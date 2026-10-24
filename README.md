@@ -28,12 +28,13 @@ microduck-dance/
 git clone --recurse-submodules https://github.com/tomomimu12345/microduck-dance
 cd microduck-dance
 uv sync                               # .venv を作る。サブモジュールの mjlab_microduck も入る
+sudo apt install ffmpeg fonts-ipaexfont # 動画の組み立てと、そのテストに要る
 bash scripts/fetch_pollen_policies.sh # roller.onnx と芸の policy（logs/tricks/ へ）
 bash scripts/fetch_basketball.sh      # ボール上の b11（logs/rsl_rl/basketball/ へ）
 uv run pytest                         # CPU のテスト
 ```
 
-Python 3.12 と uv が要る。学習と評価には CUDA の GPU が要る。曲ファイルは git に入っていないので、[dance/data/CREDITS.md](dance/data/CREDITS.md) の出典から入手する。
+Python 3.12 と uv が要る。学習と評価には CUDA の GPU が要る。説明資料の PDF を作るときは、Windows の Arial と BIZ UDGothic を使う（`/mnt/c/Windows/Fonts` にないときは `FONTDIR` で場所を指定する）。曲ファイルは git に入っていないので、[dance/data/CREDITS.md](dance/data/CREDITS.md) の出典から入手する。
 
 ## タスク
 
