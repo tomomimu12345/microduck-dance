@@ -4,6 +4,7 @@
 
 This repository makes the Microduck robot dance to music in MuJoCo: dance generation with EDGE, retargeting to robot commands, and RL policies (flat floor, rough terrain, roller skates) trained with mjlab on top of [microduck-playground](https://github.com/Vottivott/microduck-playground).
 
+- 動画: https://youtu.be/scfU_0LVZqI
 - 説明、仕組み、再現手順: [dance/README.md](dance/README.md)
 - 結果と経緯: 提出した説明資料（PDF）。レポートの原稿と実験記録（`dance/docs/`）は git に入れていない
 - 出典と権利: [dance/data/CREDITS.md](dance/data/CREDITS.md)
