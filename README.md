@@ -6,7 +6,7 @@ Give it a song, and microduck (a small bipedal robot by Pollen Robotics) dances 
 
 [![Video](https://img.youtube.com/vi/scfU_0LVZqI/maxresdefault.jpg)](https://youtu.be/scfU_0LVZqI)
 
-- How it works and how to reproduce it: [dance/README.md](dance/README.md) (in Japanese)
+- How it works and how to reproduce it: [dance/README.md](dance/README.md)
 - Results and the path to them: the submitted report (PDF). The report source and the experiment log (`dance/docs/`) are not in git
 - Sources and rights: [dance/data/CREDITS.md](dance/data/CREDITS.md)
 
@@ -22,7 +22,7 @@ microduck-dance/
 └── tests/                             tests of this repository (CPU)
 ```
 
-No upstream file is modified. The environments, robot model and task framework are imported from the submodule, and the dance tasks are added to the mjlab task registry. The section 「このリポジトリとサブモジュール」 in [dance/README.md](dance/README.md) lists which part lives where.
+No upstream file is modified. The environments, robot model and task framework are imported from the submodule, and the dance tasks are added to the mjlab task registry. The section [This repository and the submodule](dance/README.md#this-repository-and-the-submodule) in dance/README.md lists which part lives where.
 
 ## Setup
 
@@ -57,7 +57,7 @@ uv run python dance/scripts/evaluate/play_dance.py --checkpoint <model.pt> \
 | `Mjlab-BallDance-MicroDuck` | dance on a ball |
 | `Mjlab-RollerDance-MicroDuck` | dance on roller skates (roller_dance) |
 
-Training logs go to `logs/rsl_rl/`, and evaluation and recording outputs go to `out/`. Neither is in git. The full training and evaluation steps are in the section 「再現手順」 of [dance/README.md](dance/README.md).
+Training logs go to `logs/rsl_rl/`, and evaluation and recording outputs go to `out/`. Neither is in git. The full training and evaluation steps are in the section [How to reproduce](dance/README.md#how-to-reproduce) of dance/README.md.
 
 ## License
 

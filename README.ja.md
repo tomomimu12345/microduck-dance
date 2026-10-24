@@ -6,7 +6,7 @@
 
 [![動画](https://img.youtube.com/vi/scfU_0LVZqI/maxresdefault.jpg)](https://youtu.be/scfU_0LVZqI)
 
-- 説明、仕組み、再現手順: [dance/README.md](dance/README.md)
+- 説明、仕組み、再現手順: [dance/README.ja.md](dance/README.ja.md)
 - 結果と経緯: 提出した説明資料（PDF）。レポートの原稿と実験記録（`dance/docs/`）は git に入れていない
 - 出典と権利: [dance/data/CREDITS.md](dance/data/CREDITS.md)
 
@@ -22,7 +22,7 @@ microduck-dance/
 └── tests/                             このリポジトリのテスト（CPU）
 ```
 
-上流のファイルは1つも変更していない。上流の環境、機体モデル、タスク基盤をサブモジュールから import し、ダンスのタスクを mjlab のタスク登録に足している。どれがどちらにあるかは [dance/README.md](dance/README.md) の「このリポジトリとサブモジュール」にある。
+上流のファイルは1つも変更していない。上流の環境、機体モデル、タスク基盤をサブモジュールから import し、ダンスのタスクを mjlab のタスク登録に足している。どれがどちらにあるかは [dance/README.ja.md](dance/README.ja.md) の「このリポジトリとサブモジュール」にある。
 
 ## 準備
 
@@ -57,7 +57,7 @@ uv run python dance/scripts/evaluate/play_dance.py --checkpoint <model.pt> \
 | `Mjlab-BallDance-MicroDuck` | ボールの上で踊る |
 | `Mjlab-RollerDance-MicroDuck` | ローラースケートで踊る（roller_dance） |
 
-学習のログは `logs/rsl_rl/`、評価と録画の出力は `out/` に書かれる。どちらも git には入らない。学習と評価の手順の全体は [dance/README.md](dance/README.md) の「再現手順」にある。
+学習のログは `logs/rsl_rl/`、評価と録画の出力は `out/` に書かれる。どちらも git には入らない。学習と評価の手順の全体は [dance/README.ja.md](dance/README.ja.md) の「再現手順」にある。
 
 ## ライセンス
 
