@@ -666,20 +666,20 @@ def fig_edge(out_dir: Path = OUT_DIR) -> Path:
     fig, ax = canvas(7.6)
     bw, bh = 3.0, 1.1
     # inputs (left) and their projections (middle)
-    box(ax, 0.2, 5.4, bw, bh, "音楽特徴量\nJukebox, 4800 次元", "pretrained")
-    box(ax, 3.8, 5.4, 2.8, bh, "Transformer\nエンコーダ ×2", "pretrained")
+    box(ax, 0.2, 5.4, bw, bh, "Music features\nJukebox, 4800-d", "pretrained")
+    box(ax, 3.8, 5.4, 2.8, bh, "Transformer\nEncoder ×2", "pretrained")
     arrow(ax, (3.2, 5.95), (3.8, 5.95))
-    box(ax, 0.2, 3.0, bw, bh, "拡散の時刻 t", "plain", bold_first=False)
+    box(ax, 0.2, 3.0, bw, bh, "Diffusion step t", "plain", bold_first=False)
     box(ax, 3.8, 3.0, 2.8, bh, "MLP", "pretrained", bold_first=False)
     arrow(ax, (3.2, 3.55), (3.8, 3.55))
-    box(ax, 0.2, 1.25, bw, bh, "雑音入りの動き\n151 × 150", "plain")
+    box(ax, 0.2, 1.25, bw, bh, "Noisy motion\n151 × 150", "plain")
     # decoder, layers stacked bottom to top
     dx, dw = 7.3, 4.3
     ax.add_patch(Rectangle((dx, 0.95), dw, 6.35, fc="white", ec=INK2, lw=1.0, ls="--"))
-    label(ax, dx + dw / 2, 7.0, "デコーダ ×8", fs=FS, color=INK, weight="bold")
-    label(ax, dx + dw / 2, 6.55, "各層で t による FiLM", fs=FS_SMALL)
+    label(ax, dx + dw / 2, 7.0, "Decoder ×8", fs=FS, color=INK, weight="bold")
+    label(ax, dx + dw / 2, 6.55, "FiLM by t in each layer", fs=FS_SMALL)
     ys = [1.3, 3.0, 4.7]
-    for y, s in zip(ys, ["自己注意", "交差注意", "全結合"]):
+    for y, s in zip(ys, ["Self-Attention", "Cross-Attention", "Feed-Forward"]):
         box(ax, dx + 0.5, y, dw - 1.0, bh, s, "pretrained", bold_first=False)
     for y0, y1 in zip(ys[:-1], ys[1:]):
         arrow(ax, (dx + dw / 2, y0 + bh), (dx + dw / 2, y1))
@@ -687,12 +687,12 @@ def fig_edge(out_dir: Path = OUT_DIR) -> Path:
     arrow(ax, (6.6, 3.55), (dx + 0.5, 3.4))
     poly_arrow(ax, [(6.6, 5.95), (7.0, 5.95), (7.0, 3.8), (dx + 0.5, 3.8)])
     label(ax, 6.75, 3.15, "t", ha="left")
-    label(ax, 7.1, 5.3, "音楽", ha="left")
+    label(ax, 6.9, 4.6, "music", ha="right")
     # output and the sampling loop
-    box(ax, 12.5, 4.7, 3.2, bh, "推定した動き\n151 × 150", "plain")
+    box(ax, 12.5, 4.7, 3.2, bh, "Predicted motion\n151 × 150", "plain")
     arrow(ax, (dx + dw - 0.5, 5.25), (12.5, 5.25))
     poly_arrow(ax, [(14.1, 4.7), (14.1, 0.5), (1.7, 0.5), (1.7, 1.25)], color=ORANGE)
-    label(ax, 7.9, 0.12, "拡散 1000 段で学習、50 段の DDIM で生成", color=ORANGE, va="bottom")
+    label(ax, 7.9, 0.12, "Train: 1000 diffusion steps / Sample: 50 DDIM steps", color=ORANGE, va="bottom")
     return save(fig, out_dir / "edge.png")
 
 FIGURES = {
